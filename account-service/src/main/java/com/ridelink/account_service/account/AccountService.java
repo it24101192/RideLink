@@ -1,0 +1,89 @@
+package com.ridelink.account_service.account;
+
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class AccountService {
+
+    private final AccountRepository accountRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+
+    public AccountService(
+            AccountRepository accountRepository,
+            JwtService jwtService) {
+
+        this.accountRepository = accountRepository;
+        this.jwtService = jwtService;
+        this.passwordEncoder = new BCryptPasswordEncoder();
+    }
+
+    public Account register(Account account) {
+
+        account.setPassword(
+                passwordEncoder.encode(account.getPassword())
+        );
+
+        return accountRepository.save(account);
+    }
+
+    public LoginResponse login(LoginRequest request) {
+
+        Account account = accountRepository
+                .findByUsername(request.getUsername())
+                .orElse(null);
+
+        // Username not found
+        if (account == null) {
+            return new LoginResponse(
+                    "Invalid username or password",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+            );
+        }
+
+        // Password incorrect
+        if (!passwordEncoder.matches(
+                request.getPassword(),
+                account.getPassword())) {
+
+            return new LoginResponse(
+                    "Invalid username or password",
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+            );
+        }
+
+        // Account not active
+        if (!"ACTIVE".equalsIgnoreCase(account.getStatus())) {
+            return new LoginResponse(
+                    "Account is not active",
+                    account.getId(),
+                    account.getUsername(),
+                    account.getRole(),
+                    account.getStatus(),
+                    null
+            );
+        }
+
+        // Generate JWT token
+        String token = jwtService.generateToken(account);
+
+        // Successful login
+        return new LoginResponse(
+                "Login successful",
+                account.getId(),
+                account.getUsername(),
+                account.getRole(),
+                account.getStatus(),
+                token
+        );
+    }
+}
