@@ -1,10 +1,14 @@
 package com.ridelink.account_service.account;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 @Entity
 public class Account {
@@ -13,16 +17,28 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @NotBlank(message = "Username is required")
+    @NotBlank(message = "Username must not be blank")
+    @Size(min = 3, message = "Username must be at least 3 characters long")
+    @Column(nullable = false, unique = true)
     private String username;
 
-    @NotBlank(message = "Password is required")
+    @NotBlank(message = "Email must not be blank")
+    @Email(message = "Email must be valid")
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @NotBlank(message = "Password must not be blank")
+    @Size(min = 8, message = "Password must be at least 8 characters long")
     private String password;
 
-    @NotBlank(message = "Role is required")
+    @NotBlank(message = "Role must not be blank")
+    @Pattern(
+            regexp = "RIDER|DRIVER|ADMIN",
+            message = "Role must be RIDER, DRIVER, or ADMIN"
+    )
     private String role;
 
-    @NotBlank(message = "Status is required")
+    @NotBlank(message = "Status must not be blank")
     private String status;
 
     public Account() {
@@ -42,6 +58,14 @@ public class Account {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public String getPassword() {

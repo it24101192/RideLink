@@ -1,3 +1,4 @@
+
 package com.ridelink.account_service.account;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -20,6 +21,18 @@ public class AccountService {
     }
 
     public Account register(Account account) {
+
+        if (accountRepository.existsByUsername(account.getUsername())) {
+            throw new AccountAlreadyExistsException(
+                    "Username already exists"
+            );
+        }
+
+        if (accountRepository.existsByEmail(account.getEmail())) {
+            throw new AccountAlreadyExistsException(
+                    "Email already exists"
+            );
+        }
 
         account.setPassword(
                 passwordEncoder.encode(account.getPassword())
@@ -85,5 +98,75 @@ public class AccountService {
                 account.getStatus(),
                 token
         );
+    }
+
+    public AccountProfileResponse getAccountProfile(String username) {
+
+        Account account = accountRepository
+                .findByUsername(username)
+                .orElseThrow(() -> new AccountNotFoundException(
+                        "Account not found"
+                ));
+
+        return new AccountProfileResponse(account);
+    }
+
+    public AccountProfileResponse updateAccountProfile(
+            String username,
+            UpdateAccountRequest request) {
+
+        Account account = accountRepository
+                .findByUsername(username)
+                .orElseThrow(() -> new AccountNotFoundException(
+                        "Account not found"
+                ));
+
+        accountRepository.findByEmail(request.getEmail())
+                .filter(existingAccount ->
+                        !existingAccount.getId().equals(account.getId())
+                )
+                .ifPresent(existingAccount -> {
+                    throw new AccountAlreadyExistsException(
+                            "Email already exists"
+                    );
+                });
+
+        account.setEmail(request.getEmail());
+
+        account.setPassword(
+                passwordEncoder.encode(request.getPassword())
+        );
+
+        Account updatedAccount = accountRepository.save(account);
+
+        return new AccountProfileResponse(updatedAccount);
+    }
+
+    public AccountProfileResponse deactivateAccount(String username) {
+
+        Account account = accountRepository
+                .findByUsername(username)
+                .orElseThrow(() -> new AccountNotFoundException(
+                        "Account not found"
+                ));
+
+        if (!"INACTIVE".equalsIgnoreCase(account.getStatus())) {
+            account.setStatus("INACTIVE");
+            accountRepository.save(account);
+        }
+
+        return new AccountProfileResponse(account);
+    }
+
+    // Delete account
+    public void deleteAccount(String username) {
+
+        Account account = accountRepository
+                .findByUsername(username)
+                .orElseThrow(() -> new AccountNotFoundException(
+                        "Account not found"
+                ));
+
+        accountRepository.delete(account);
     }
 }

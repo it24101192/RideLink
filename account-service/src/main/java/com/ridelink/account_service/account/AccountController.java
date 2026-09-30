@@ -1,3 +1,4 @@
+
 package com.ridelink.account_service.account;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -5,8 +6,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -42,8 +46,49 @@ public class AccountController {
     // JWT required
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/profile")
-    public String profile(Authentication authentication) {
-        return "Logged in user: " + authentication.getName();
+    public AccountProfileResponse profile(
+            Authentication authentication) {
+
+        return accountService.getAccountProfile(
+                authentication.getName()
+        );
+    }
+
+    // JWT required
+    @SecurityRequirement(name = "bearerAuth")
+    @PutMapping("/profile")
+    public AccountProfileResponse updateProfile(
+            Authentication authentication,
+            @Valid @RequestBody UpdateAccountRequest request) {
+
+        return accountService.updateAccountProfile(
+                authentication.getName(),
+                request
+        );
+    }
+
+    // JWT required
+    @SecurityRequirement(name = "bearerAuth")
+    @PatchMapping("/profile/deactivate")
+    public AccountProfileResponse deactivateProfile(
+            Authentication authentication) {
+
+        return accountService.deactivateAccount(
+                authentication.getName()
+        );
+    }
+
+    // JWT required
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/profile")
+    public String deleteProfile(
+            Authentication authentication) {
+
+        accountService.deleteAccount(
+                authentication.getName()
+        );
+
+        return "Account deleted successfully";
     }
 
     // JWT + ADMIN role required
