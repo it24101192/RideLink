@@ -39,7 +39,7 @@ public class SecurityConfig {
 
             .authorizeHttpRequests(auth -> auth
 
-                // Allow Spring Boot error dispatches
+                
                 .dispatcherTypeMatchers(
                     DispatcherType.ERROR
                 ).permitAll()
@@ -50,41 +50,42 @@ public class SecurityConfig {
                 "/v3/api-docs/**"
                 ).permitAll()
 
-                // Public GET endpoint
+                
                 .requestMatchers(
                     HttpMethod.GET,
                     "/api/accounts/test"
                 ).permitAll()
 
-                // Public POST endpoints
+                
                 .requestMatchers(
                     HttpMethod.POST,
                     "/api/accounts/register",
                     "/api/accounts/login"
                 ).permitAll()
 
-                // ADMIN only
+                
                 .requestMatchers(
-                    "/api/accounts/admin/test"
+                "/api/accounts/admin/test",
+                "/api/accounts/admin/accounts"
                 ).hasAuthority("ROLE_ADMIN")
 
-                // DRIVER only
+               
                 .requestMatchers(
                     "/api/accounts/driver/**"
                 ).hasAuthority("ROLE_DRIVER")
 
-                // RIDER only
+                
                 .requestMatchers(
                     "/api/accounts/rider/**"
                 ).hasAuthority("ROLE_RIDER")
 
-                // Everything else requires authentication
+               
                 .anyRequest().authenticated()
             )
 
             .exceptionHandling(exception ->
                 exception
-                    // No authentication → 401
+                    
                     .authenticationEntryPoint(
                         (request, response, authException) ->
                             response.sendError(
@@ -93,7 +94,7 @@ public class SecurityConfig {
                             )
                     )
 
-                    // Wrong role → 403
+                   
                     .accessDeniedHandler(
                         (request, response, accessDeniedException) ->
                             response.sendError(

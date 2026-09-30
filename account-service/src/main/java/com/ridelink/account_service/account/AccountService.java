@@ -47,7 +47,7 @@ public class AccountService {
                 .findByUsername(request.getUsername())
                 .orElse(null);
 
-        // Username not found
+        
         if (account == null) {
             return new LoginResponse(
                     "Invalid username or password",
@@ -59,7 +59,7 @@ public class AccountService {
             );
         }
 
-        // Password incorrect
+       
         if (!passwordEncoder.matches(
                 request.getPassword(),
                 account.getPassword())) {
@@ -74,7 +74,7 @@ public class AccountService {
             );
         }
 
-        // Account not active
+       
         if (!"ACTIVE".equalsIgnoreCase(account.getStatus())) {
             return new LoginResponse(
                     "Account is not active",
@@ -86,10 +86,10 @@ public class AccountService {
             );
         }
 
-        // Generate JWT token
+        
         String token = jwtService.generateToken(account);
 
-        // Successful login
+
         return new LoginResponse(
                 "Login successful",
                 account.getId(),
@@ -158,7 +158,14 @@ public class AccountService {
         return new AccountProfileResponse(account);
     }
 
-    // Delete account
+   public java.util.List<AdminAccountResponse> getAllAccounts() {
+
+    return accountRepository.findAll()
+            .stream()
+            .map(AdminAccountResponse::new)
+            .toList();
+}
+
     public void deleteAccount(String username) {
 
         Account account = accountRepository

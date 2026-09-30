@@ -3,6 +3,7 @@ package com.ridelink.account_service.account;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
+import java.util.List;
 import jakarta.validation.Valid;
 
 import org.springframework.security.core.Authentication;
@@ -25,25 +26,24 @@ public class AccountController {
         this.accountService = accountService;
     }
 
-    // Public test endpoint
     @GetMapping("/test")
     public String test() {
         return "Account Service is working!";
     }
 
-    // Public registration endpoint
+    
     @PostMapping("/register")
     public Account register(@Valid @RequestBody Account account) {
         return accountService.register(account);
     }
 
-    // Public login endpoint
+    
     @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest request) {
         return accountService.login(request);
     }
 
-    // JWT required
+    
     @SecurityRequirement(name = "bearerAuth")
     @GetMapping("/profile")
     public AccountProfileResponse profile(
@@ -54,7 +54,7 @@ public class AccountController {
         );
     }
 
-    // JWT required
+    
     @SecurityRequirement(name = "bearerAuth")
     @PutMapping("/profile")
     public AccountProfileResponse updateProfile(
@@ -67,7 +67,7 @@ public class AccountController {
         );
     }
 
-    // JWT required
+   
     @SecurityRequirement(name = "bearerAuth")
     @PatchMapping("/profile/deactivate")
     public AccountProfileResponse deactivateProfile(
@@ -78,7 +78,7 @@ public class AccountController {
         );
     }
 
-    // JWT required
+    
     @SecurityRequirement(name = "bearerAuth")
     @DeleteMapping("/profile")
     public String deleteProfile(
@@ -90,11 +90,16 @@ public class AccountController {
 
         return "Account deleted successfully";
     }
-
-    // JWT + ADMIN role required
+    
     @SecurityRequirement(name = "bearerAuth")
-    @GetMapping("/admin/test")
-    public String adminTest() {
-        return "ADMIN access granted!";
+@GetMapping("/admin/test")
+public String adminTest() {
+    return "ADMIN access granted!";
+}
+
+        @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/admin/accounts")
+    public List<AdminAccountResponse> getAllAccounts() {
+        return accountService.getAllAccounts();
     }
 }
