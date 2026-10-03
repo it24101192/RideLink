@@ -20,30 +20,31 @@ flowchart LR
 - PostgreSQL 14+ and a dedicated `ridelink_ride_db` database/user.
 - Account Service running at `ACCOUNT_SERVICE_URL` and Driver & Vehicle Service running at `DRIVER_SERVICE_URL` for identity checks and driver assignment.
 - The Account Service and Ride Management Service must use the same HMAC JWT secret. Use a locally generated secret with at least 32 bytes.
-- Gradle wrapper at the repository root: `account-service/gradlew`.
+- The included Gradle wrapper downloads the pinned Gradle version on first use if needed.
 
-Start PostgreSQL, Account Service, and Driver & Vehicle Service first. Configure the environment from `.env.example` (Spring Boot does not load `.env` automatically), then start Ride Management:
+Start the local PostgreSQL database with Docker, then start Account Service and Driver & Vehicle Service if you need their identity and driver assignment features. The database credentials below match the defaults in `application.properties`; change them before using this setup beyond local development. Configure the environment from `.env.example` (Spring Boot does not load `.env` automatically), then start Ride Management:
 
-```bash
-cp ride-management-service/.env.example ride-management-service/.env
-# Export the variables in your shell after editing the local file.
-bash account-service/gradlew -p ride-management-service bootRun
+```powershell
+docker compose up -d ride-postgres
+npm.cmd run dev
 ```
+
+Stop the database with `docker compose down`. The database volume is preserved; use `docker compose down -v` only when you intentionally want to delete local database data.
 
 The service listens on port `3003` by default. Flyway applies migrations on startup. Health: `http://localhost:3003/health`; Swagger UI: `http://localhost:3003/api-docs`; the complete static OpenAPI contract is served at `http://localhost:3003/openapi.yaml` and the generated Springdoc document at `http://localhost:3003/v3/api-docs`.
 
 ## Commands
 
-Run from repository root:
+Run from the `ride-management-service` directory:
 
 | Task | Command |
 | --- | --- |
-| Resolve dependencies | `bash account-service/gradlew -p ride-management-service dependencies` |
-| Run locally | `bash account-service/gradlew -p ride-management-service bootRun` |
-| Lint | `bash account-service/gradlew -p ride-management-service checkstyleMain checkstyleTest` |
-| Unit tests | `bash account-service/gradlew -p ride-management-service test` |
-| Coverage report | `bash account-service/gradlew -p ride-management-service jacocoTestReport` |
-| Build | `bash account-service/gradlew -p ride-management-service clean build` |
+| Resolve dependencies | `.\gradlew dependencies` (PowerShell) |
+| Run locally | `npm.cmd run dev` (PowerShell) or `npm run dev` (other shells) |
+| Lint | `.\gradlew checkstyleMain checkstyleTest` (PowerShell) |
+| Unit tests | `.\gradlew test` (PowerShell) |
+| Coverage report | `.\gradlew jacocoTestReport` (PowerShell) |
+| Build | `.\gradlew clean build` (PowerShell) |
 | Swagger UI | Open `http://localhost:3003/api-docs` |
 
 ## Configuration

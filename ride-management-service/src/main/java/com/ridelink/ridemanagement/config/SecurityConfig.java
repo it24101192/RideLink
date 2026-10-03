@@ -1,6 +1,6 @@
 package com.ridelink.ridemanagement.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import com.ridelink.ridemanagement.error.ApiErrorResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;

@@ -3,6 +3,7 @@
   "private": true,
   "description": "Jest utilities and Axios interservice clients for Ride Management Service",
   "scripts": {
+    "dev": "gradlew.bat bootRun",
     "test:js": "jest --runInBand src/utils/*.test.js src/clients/*.test.js"
   },
   "devDependencies": {
