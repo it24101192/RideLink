@@ -1,0 +1,336 @@
+openapi: 3.0.3
+info:
+  title: Ride Management Service API
+  version: 1.0.0
+  description: |
+    Ride requests, driver assignment, lifecycle, fare estimates, and simulated receipts.
+    Errors use a consistent { error: { code, message, details } } envelope.
+servers:
+  - url: http://localhost:3003
+    description: Local development
+security:
+  - BearerAuth: []
+tags:
+  - name: Rides
+  - name: Lifecycle
+  - name: Payments
+paths:
+  /health:
+    get:
+      tags: [Rides]
+      security: []
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthResponse' }
+              example: { status: UP, service: ride-management-service }
+  /api/rides:
+    post:
+      tags: [Rides]
+      summary: Create a ride request (PASSENGER)
+      description: Validates the passenger with Account Service and records a REQUESTED ride.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRideRequest' }
+            examples:
+              ColomboTrip:
+                value: { pickupLat: 6.9271, pickupLng: 79.8612, pickupAddress: Colombo Fort, destLat: 6.9147, destLng: 79.9729, destAddress: Rajagiriya, durationMin: 25 }
+      responses:
+        '201':
+          description: Ride created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ride' }
+              example: { id: '4e97f819-6d72-431c-98af-7952b4d2130d', passengerId: 'f93360f4-d8cd-45d5-9957-1b2be6d5d199', driverId: null, status: REQUESTED, estimatedFare: 642.50, distanceKm: 5.85, durationMin: 25 }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '503': { $ref: '#/components/responses/UpstreamUnavailable' }
+    get:
+      tags: [Rides]
+      summary: List rides visible to the authenticated user
+      description: Passengers and drivers receive only their own rides. ADMIN may filter all rides.
+      parameters:
+        - { $ref: '#/components/parameters/PassengerIdFilter' }
+        - { $ref: '#/components/parameters/DriverIdFilter' }
+        - { $ref: '#/components/parameters/StatusFilter' }
+      responses:
+        '200':
+          description: Ride list
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/Ride' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/rides/fare-estimate:
+    get:
+      tags: [Rides]
+      summary: Estimate fare before booking (PASSENGER or ADMIN)
+      parameters:
+        - { in: query, name: pickupLat, required: true, schema: { type: number, minimum: -90, maximum: 90 }, example: 6.9271 }
+        - { in: query, name: pickupLng, required: true, schema: { type: number, minimum: -180, maximum: 180 }, example: 79.8612 }
+        - { in: query, name: destLat, required: true, schema: { type: number, minimum: -90, maximum: 90 }, example: 6.9147 }
+        - { in: query, name: destLng, required: true, schema: { type: number, minimum: -180, maximum: 180 }, example: 79.9729 }
+        - { in: query, name: durationMin, schema: { type: integer, minimum: 1, maximum: 600, default: 30 }, example: 25 }
+      responses:
+        '200':
+          description: Estimated fare in LKR
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FareEstimate' }
+              example: { estimatedFare: 642.50, distanceKm: 5.85, durationMin: 25, currency: LKR }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+  /api/rides/{id}:
+    parameters: [{ $ref: '#/components/parameters/RideId' }]
+    get:
+      tags: [Rides]
+      summary: Get ride details (owner or ADMIN)
+      responses:
+        '200':
+          description: Ride details, including status history
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ride' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/rides/{id}/assign:
+    parameters: [{ $ref: '#/components/parameters/RideId' }]
+    post:
+      tags: [Lifecycle]
+      summary: Assign a driver (ADMIN/SYSTEM)
+      description: Supply driverId or omit the body to request nearest available driver from Driver & Vehicle Service.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignRequest' }
+            example: { driverId: '1cb43bb7-9d77-4b08-a4e3-06b916f7c2bd' }
+      responses:
+        '200':
+          description: Driver assigned and ride moved to ASSIGNED
+          content: { application/json: { schema: { $ref: '#/components/schemas/Ride' } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '503': { $ref: '#/components/responses/UpstreamUnavailable' }
+  /api/rides/{id}/accept:
+    parameters: [{ $ref: '#/components/parameters/RideId' }]
+    post:
+      tags: [Lifecycle]
+      summary: Accept an assigned ride (assigned DRIVER)
+      responses:
+        '200': { description: Ride accepted, content: { application/json: { schema: { $ref: '#/components/schemas/Ride' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '503': { $ref: '#/components/responses/UpstreamUnavailable' }
+  /api/rides/{id}/start:
+    parameters: [{ $ref: '#/components/parameters/RideId' }]
+    post:
+      tags: [Lifecycle]
+      summary: Start an accepted ride (assigned DRIVER)
+      responses:
+        '200': { description: Ride started, content: { application/json: { schema: { $ref: '#/components/schemas/Ride' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/rides/{id}/complete:
+    parameters: [{ $ref: '#/components/parameters/RideId' }]
+    post:
+      tags: [Lifecycle, Payments]
+      summary: Complete ride and process simulated payment (assigned DRIVER)
+      description: Recalculates final fare, stores a simulated payment, and publishes a ride.completed event.
+      responses:
+        '200': { description: Ride completed, content: { application/json: { schema: { $ref: '#/components/schemas/Ride' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '402': { $ref: '#/components/responses/PaymentRequired' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/rides/{id}/cancel:
+    parameters: [{ $ref: '#/components/parameters/RideId' }]
+    post:
+      tags: [Lifecycle]
+      summary: Cancel ride (owner, assigned DRIVER, or ADMIN)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CancelRequest' }
+            example: { reason: Passenger changed plans }
+      responses:
+        '200': { description: Ride cancelled, content: { application/json: { schema: { $ref: '#/components/schemas/Ride' } } } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+  /api/rides/{id}/receipt:
+    parameters: [{ $ref: '#/components/parameters/RideId' }]
+    get:
+      tags: [Payments]
+      summary: Get payment receipt for a completed ride
+      responses:
+        '200':
+          description: Simulated payment receipt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Receipt' }
+              example: { rideId: '4e97f819-6d72-431c-98af-7952b4d2130d', amount: 642.50, method: SIMULATED, status: PAID, transactionRef: 'SIM-8f90b14d', paidAt: '2026-01-15T03:00:00Z' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+  /api/rides/{id}/fare-estimate:
+    parameters: [{ $ref: '#/components/parameters/RideId' }]
+    get:
+      tags: [Rides]
+      summary: Return fare estimate for an existing ride (owner or ADMIN)
+      responses:
+        '200': { description: Fare estimate, content: { application/json: { schema: { $ref: '#/components/schemas/FareEstimate' } } } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT issued by the Account Service.
+  parameters:
+    RideId:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, format: uuid }
+      example: '4e97f819-6d72-431c-98af-7952b4d2130d'
+    PassengerIdFilter: { in: query, name: passengerId, schema: { type: string, format: uuid } }
+    DriverIdFilter: { in: query, name: driverId, schema: { type: string, format: uuid } }
+    StatusFilter: { in: query, name: status, schema: { $ref: '#/components/schemas/RideStatus' } }
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, service]
+      properties:
+        status: { type: string, example: UP }
+        service: { type: string, example: ride-management-service }
+    RideStatus:
+      type: string
+      enum: [REQUESTED, ASSIGNED, ACCEPTED, IN_PROGRESS, COMPLETED, CANCELLED]
+    PaymentStatus:
+      type: string
+      enum: [PAID, FAILED]
+    CreateRideRequest:
+      type: object
+      required: [pickupLat, pickupLng, pickupAddress, destLat, destLng, destAddress]
+      properties:
+        pickupLat: { type: number, minimum: -90, maximum: 90, example: 6.9271 }
+        pickupLng: { type: number, minimum: -180, maximum: 180, example: 79.8612 }
+        pickupAddress: { type: string, maxLength: 300, example: Colombo Fort }
+        destLat: { type: number, minimum: -90, maximum: 90, example: 6.9147 }
+        destLng: { type: number, minimum: -180, maximum: 180, example: 79.9729 }
+        destAddress: { type: string, maxLength: 300, example: Rajagiriya }
+        durationMin: { type: integer, minimum: 1, maximum: 600, example: 25 }
+    AssignRequest:
+      type: object
+      required: [driverId]
+      properties:
+        driverId: { type: string, format: uuid, example: '1cb43bb7-9d77-4b08-a4e3-06b916f7c2bd' }
+    CancelRequest:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, maxLength: 500, example: Passenger changed plans }
+    StatusHistory:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fromStatus: { allOf: [{ $ref: '#/components/schemas/RideStatus' }], nullable: true }
+        toStatus: { $ref: '#/components/schemas/RideStatus' }
+        changedBy: { type: string, format: uuid }
+        changedAt: { type: string, format: date-time }
+        reason: { type: string, nullable: true }
+    Ride:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        passengerId: { type: string, format: uuid }
+        driverId: { type: string, format: uuid, nullable: true }
+        pickupLat: { type: number }
+        pickupLng: { type: number }
+        pickupAddress: { type: string }
+        destLat: { type: number }
+        destLng: { type: number }
+        destAddress: { type: string }
+        status: { $ref: '#/components/schemas/RideStatus' }
+        estimatedFare: { type: number, format: decimal, example: 642.50 }
+        finalFare: { type: number, format: decimal, nullable: true }
+        distanceKm: { type: number, format: decimal }
+        durationMin: { type: integer }
+        cancellationReason: { type: string, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time, nullable: true }
+        statusHistory: { type: array, items: { $ref: '#/components/schemas/StatusHistory' } }
+    FareEstimate:
+      type: object
+      required: [estimatedFare, distanceKm, durationMin, currency]
+      properties:
+        estimatedFare: { type: number, format: decimal, minimum: 300, example: 642.50 }
+        distanceKm: { type: number, format: decimal, example: 5.85 }
+        durationMin: { type: integer, example: 25 }
+        currency: { type: string, enum: [LKR], example: LKR }
+    Receipt:
+      type: object
+      required: [rideId, amount, method, status, transactionRef]
+      properties:
+        rideId: { type: string, format: uuid }
+        amount: { type: number, format: decimal }
+        method: { type: string, enum: [SIMULATED] }
+        status: { $ref: '#/components/schemas/PaymentStatus' }
+        transactionRef: { type: string, example: SIM-8f90b14d }
+        paidAt: { type: string, format: date-time, nullable: true }
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message, details]
+          properties:
+            code: { type: string, example: INVALID_STATUS_TRANSITION }
+            message: { type: string, example: 'Invalid Status Transition: REQUESTED -> COMPLETED' }
+            details: { type: array, items: { type: string }, example: [] }
+  responses:
+    BadRequest:
+      description: Invalid input or invalid ride status transition
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: { code: INVALID_STATUS_TRANSITION, message: Invalid Status Transition, details: [] } } } }
+    Unauthorized:
+      description: Missing or invalid bearer token
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: { code: UNAUTHORIZED, message: Authentication is required, details: [] } } } }
+    Forbidden:
+      description: Role or resource ownership check failed
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: { code: FORBIDDEN, message: You cannot view this ride, details: [] } } } }
+    NotFound:
+      description: Ride or payment receipt was not found
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: { code: NOT_FOUND, message: Ride not found, details: [] } } } }
+    Conflict:
+      description: No driver available, ride conflict, or receipt is not ready
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: { code: NO_AVAILABLE_DRIVER, message: No Available Driver, details: [] } } } }
+    PaymentRequired:
+      description: Simulated payment failed after ride completion
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: { code: PAYMENT_FAILED, message: Simulated payment failed, details: [] } } } }
+    UpstreamUnavailable:
+      description: Account or Driver Service did not respond successfully
+      content: { application/json: { schema: { $ref: '#/components/schemas/ErrorResponse' }, example: { error: { code: DRIVER_SERVICE_UNAVAILABLE, message: Driver Service is unavailable, details: [] } } } }
