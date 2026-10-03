@@ -43,6 +43,7 @@ public class JwtService {
 
         return Jwts.builder()
                 .subject(account.getUsername())
+                .claim("userId", account.getId().toString())
                 .claim("role", account.getRole())
                 .claim("status", account.getStatus())
                 .issuedAt(now)

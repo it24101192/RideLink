@@ -35,6 +35,8 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-security-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+    // Contract test: decode our JWTs exactly like ride-management / fare-payment services do
+    testImplementation 'org.springframework.security:spring-security-oauth2-jose'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 

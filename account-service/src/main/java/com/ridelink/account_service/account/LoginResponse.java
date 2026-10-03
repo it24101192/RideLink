@@ -1,10 +1,12 @@
 
 package com.ridelink.account_service.account;
 
+import java.util.UUID;
+
 public class LoginResponse {
 
     private String message;
-    private Long accountId;
+    private UUID accountId;
     private String username;
     private String role;
     private String status;
@@ -15,7 +17,7 @@ public class LoginResponse {
 
     public LoginResponse(
             String message,
-            Long accountId,
+            UUID accountId,
             String username,
             String role,
             String status,
@@ -33,7 +35,7 @@ public class LoginResponse {
         return message;
     }
 
-    public Long getAccountId() {
+    public UUID getAccountId() {
         return accountId;
     }
 
