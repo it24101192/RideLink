@@ -17,17 +17,6 @@ jobs:
   fare-payment:
     name: Java 21 · lint, tests, coverage, build
     runs-on: ubuntu-latest
-    env:
-      FARE_DB_URL: ${{ secrets.FARE_DB_URL }}
-      FARE_DB_USERNAME: ${{ secrets.FARE_DB_USERNAME }}
-      FARE_DB_PASSWORD: ${{ secrets.FARE_DB_PASSWORD }}
-      FARE_JWT_SECRET: ${{ secrets.FARE_JWT_SECRET }}
-      RIDE_SERVICE_URL: ${{ secrets.RIDE_SERVICE_URL }}
-      MESSAGE_BROKER_URL: file:/tmp/ridelink-ci-events.jsonl
-      MESSAGE_BROKER_TYPE: file
-      PAYMENT_TEST_MODE: "true"
-      PAYMENT_TEST_OUTCOME_SUCCESS: "true"
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -42,19 +31,19 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Lint
-        run: bash account-service/gradlew -p fare-payment-service checkstyleMain checkstyleTest
+        run: bash fare-payment-service/gradlew -p fare-payment-service checkstyleMain checkstyleTest
 
       - name: Run unit tests
-        run: bash account-service/gradlew -p fare-payment-service test
+        run: bash fare-payment-service/gradlew -p fare-payment-service test
 
       - name: Run API integration tests
-        run: bash account-service/gradlew -p fare-payment-service integrationTest
+        run: bash fare-payment-service/gradlew -p fare-payment-service integrationTest
 
       - name: Build coverage report
-        run: bash account-service/gradlew -p fare-payment-service jacocoTestReport
+        run: bash fare-payment-service/gradlew -p fare-payment-service jacocoTestReport
 
       - name: Build service
-        run: bash account-service/gradlew -p fare-payment-service build
+        run: bash fare-payment-service/gradlew -p fare-payment-service build
 
       - name: Upload coverage and test reports
         if: always()

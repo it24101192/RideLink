@@ -31,7 +31,9 @@ dependencies {
 }
 
 processResources {
-    from('openapi.yaml')
+    from('openapi.yaml') {
+        into 'api-spec'
+    }
 }
 
 tasks.named('test') { useJUnitPlatform() }
