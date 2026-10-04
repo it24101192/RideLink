@@ -33,8 +33,14 @@ public class AccountController {
 
     
     @PostMapping("/register")
-    public Account register(@Valid @RequestBody Account account) {
-        return accountService.register(account);
+    public AccountResponse register(@Valid @RequestBody RegistrationRequest request) {
+        return accountService.register(request);
+    }
+
+    @PostMapping("/admin/drivers")
+    @SecurityRequirement(name = "bearerAuth")
+    public AccountResponse registerDriver(@Valid @RequestBody RegistrationRequest request) {
+        return accountService.registerDriver(request);
     }
 
     

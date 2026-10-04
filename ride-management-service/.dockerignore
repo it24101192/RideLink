@@ -1,0 +1,8 @@
+node_modules/
+bin/
+build/
+.gradle/
+.env
+.env.*
+!.env.example
+*.log

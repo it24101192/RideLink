@@ -1,0 +1,3 @@
+CREATE DATABASE IF NOT EXISTS ridelink_account_db;
+CREATE DATABASE IF NOT EXISTS ridelink_driver_db;
+CREATE DATABASE IF NOT EXISTS ridelink_fare_db;

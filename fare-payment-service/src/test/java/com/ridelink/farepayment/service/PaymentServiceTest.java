@@ -32,6 +32,7 @@ import com.ridelink.farepayment.repository.port.FareEstimateRepository;
 import com.ridelink.farepayment.repository.port.PaymentRepository;
 import com.ridelink.farepayment.messaging.MessagingClient;
 import com.ridelink.farepayment.messaging.PaymentCompletedEvent;
+import com.ridelink.farepayment.messaging.RideCompletedEvent;
 
 @ExtendWith(MockitoExtension.class)
 class PaymentServiceTest {
@@ -52,12 +53,12 @@ class PaymentServiceTest {
 
     @Test
     void processesSuccessfulPayment() {
-        when(rideClient.getRide(rideId)).thenReturn(Optional.of(completedRide()));
+        when(rideClient.getRide(rideId, "Bearer test")).thenReturn(Optional.of(completedRide()));
         when(payments.findByRideId(rideId)).thenReturn(List.of());
         when(outcomeSimulator.succeeds()).thenReturn(true);
         when(payments.create(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = service.processPayment(request(rideId.toString()));
+        var result = service.processPayment(request(rideId.toString()), "Bearer test");
 
         assertEquals(PaymentStatus.SUCCESS, result.status());
         assertEquals(70_000, result.amount());
@@ -73,12 +74,12 @@ class PaymentServiceTest {
 
     @Test
     void persistsDeclinedPaymentAndReturnsFailureReason() {
-        when(rideClient.getRide(rideId)).thenReturn(Optional.of(completedRide()));
+        when(rideClient.getRide(rideId, "Bearer test")).thenReturn(Optional.of(completedRide()));
         when(payments.findByRideId(rideId)).thenReturn(List.of());
         when(outcomeSimulator.succeeds()).thenReturn(false);
         when(payments.create(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var result = service.processPayment(request(rideId.toString()));
+        var result = service.processPayment(request(rideId.toString()), "Bearer test");
 
         assertEquals(PaymentStatus.FAILED, result.status());
         assertEquals("Simulated payment was declined", result.failureReason());
@@ -86,38 +87,39 @@ class PaymentServiceTest {
 
     @Test
     void rejectsMalformedOrUnknownRide() {
-        assertThrows(ValidationError.class, () -> service.processPayment(request("not-a-uuid")));
-        when(rideClient.getRide(rideId)).thenReturn(Optional.empty());
-        assertThrows(NotFoundError.class, () -> service.processPayment(request(rideId.toString())));
+        assertThrows(ValidationError.class, () -> service.processPayment(request("not-a-uuid"), "Bearer test"));
+        when(rideClient.getRide(rideId, "Bearer test")).thenReturn(Optional.empty());
+        assertThrows(NotFoundError.class, () -> service.processPayment(request(rideId.toString()), "Bearer test"));
     }
 
     @Test
     void rejectsRideThatIsNotCompleted() {
-        when(rideClient.getRide(rideId)).thenReturn(Optional.of(new RideServiceRide(rideId, "IN_PROGRESS")));
+        when(rideClient.getRide(rideId, "Bearer test"))
+            .thenReturn(Optional.of(new RideServiceRide(rideId, "IN_PROGRESS", "1001", "2001")));
         assertThrows(com.ridelink.farepayment.error.RideNotCompletedError.class,
-            () -> service.processPayment(request(rideId.toString())));
+            () -> service.processPayment(request(rideId.toString()), "Bearer test"));
     }
 
     @Test
     void rejectsDuplicateSuccessfulPayment() {
-        when(rideClient.getRide(rideId)).thenReturn(Optional.of(completedRide()));
+        when(rideClient.getRide(rideId, "Bearer test")).thenReturn(Optional.of(completedRide()));
         Payment existing = successfulPayment();
         existing.setRideId(rideId);
         when(payments.findByRideId(rideId)).thenReturn(List.of(existing));
 
         assertThrows(DuplicatePaymentError.class,
-            () -> service.processPayment(request(rideId.toString())));
+            () -> service.processPayment(request(rideId.toString()), "Bearer test"));
     }
 
     @Test
     void transactionReferenceCanForceDeterministicDecline() {
-        when(rideClient.getRide(rideId)).thenReturn(Optional.of(completedRide()));
+        when(rideClient.getRide(rideId, "Bearer test")).thenReturn(Optional.of(completedRide()));
         when(payments.findByRideId(rideId)).thenReturn(List.of());
         when(payments.create(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         PaymentRequest forcedFailure = new PaymentRequest(rideId.toString(), null, "1001", "2001",
             5, 10, null, PaymentMethod.SIMULATED_CARD, "test-0000");
-        var result = service.processPayment(forcedFailure);
+        var result = service.processPayment(forcedFailure, "Bearer test");
 
         assertEquals(PaymentStatus.FAILED, result.status());
         assertEquals("Simulated card decline: transaction reference ends with 0000", result.failureReason());
@@ -142,7 +144,24 @@ class PaymentServiceTest {
     void rejectsNonPositiveDistanceBeforeRideCall() {
         var invalid = new PaymentRequest(rideId.toString(), null, "1001", "2001",
             0, 5, null, PaymentMethod.CASH, "txn-1");
-        assertThrows(ValidationError.class, () -> service.processPayment(invalid));
+        assertThrows(ValidationError.class, () -> service.processPayment(invalid, "Bearer test"));
+    }
+
+    @Test
+    void duplicateRideCompletionEventCreatesOnlyOnePayment() {
+        String eventId = UUID.randomUUID().toString();
+        var event = new RideCompletedEvent(eventId, "ride.completed", "1.0",
+            java.time.Instant.parse("2026-10-03T12:00:00Z"), rideId.toString(), "1001", "2001",
+            new java.math.BigDecimal("5.000"), 10, new java.math.BigDecimal("500.00"), "LKR");
+        Payment saved = successfulPayment();
+        when(payments.findByRideId(rideId)).thenReturn(List.of(), List.of(saved));
+        when(payments.create(any(Payment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(outcomeSimulator.succeeds()).thenReturn(true);
+
+        service.processRideCompleted(event);
+        service.processRideCompleted(event);
+
+        verify(payments).create(any(Payment.class));
     }
 
     private PaymentRequest request(String id) {
@@ -150,7 +169,7 @@ class PaymentServiceTest {
             null, PaymentMethod.SIMULATED_CARD, "txn-" + UUID.randomUUID());
     }
 
-    private RideServiceRide completedRide() { return new RideServiceRide(rideId, "COMPLETED"); }
+    private RideServiceRide completedRide() { return new RideServiceRide(rideId, "COMPLETED", "1001", "2001"); }
 
     private Payment successfulPayment() {
         Payment payment = new Payment();

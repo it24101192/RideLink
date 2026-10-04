@@ -43,7 +43,9 @@ public class JwtService {
 
         return Jwts.builder()
                 .subject(account.getUsername())
-                .claim("role", account.getRole())
+                .claim("userId", account.getUserId().toString())
+                .claim("role", "RIDER".equalsIgnoreCase(account.getRole()) ? "PASSENGER" : account.getRole())
+                .claim("username", account.getUsername())
                 .claim("status", account.getStatus())
                 .issuedAt(now)
                 .expiration(expiration)

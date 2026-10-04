@@ -3,6 +3,8 @@ package com.ridelink.account_service.account;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import java.util.Locale;
+import java.util.UUID;
 
 @Service
 public class AccountService {
@@ -20,25 +22,48 @@ public class AccountService {
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
-    public Account register(Account account) {
+    public AccountResponse register(RegistrationRequest request) {
+        return registerAs(request, "PASSENGER");
+    }
 
-        if (accountRepository.existsByUsername(account.getUsername())) {
+    public AccountResponse registerDriver(RegistrationRequest request) {
+        return registerAs(request, "DRIVER");
+    }
+
+    private AccountResponse registerAs(RegistrationRequest request, String role) {
+
+        if (accountRepository.existsByUsername(request.username())) {
             throw new AccountAlreadyExistsException(
                     "Username already exists"
             );
         }
 
-        if (accountRepository.existsByEmail(account.getEmail())) {
+        if (accountRepository.existsByEmail(request.email())) {
             throw new AccountAlreadyExistsException(
                     "Email already exists"
             );
         }
 
-        account.setPassword(
-                passwordEncoder.encode(account.getPassword())
-        );
+        Account account = new Account();
+        account.setUsername(request.username().trim());
+        account.setEmail(request.email().trim().toLowerCase(Locale.ROOT));
+        account.setPassword(passwordEncoder.encode(request.password()));
+        account.setRole(role);
+        account.setStatus("ACTIVE");
+        return new AccountResponse(accountRepository.save(account));
+    }
 
-        return accountRepository.save(account);
+    public UserIdentityResponse getUserIdentity(UUID userId) {
+        Account account = accountRepository.findByUserId(userId)
+                .orElseThrow(() -> new AccountNotFoundException("Account not found"));
+        if (!"ACTIVE".equalsIgnoreCase(account.getStatus())) {
+            throw new AccountNotFoundException("Account not found");
+        }
+        return new UserIdentityResponse(account.getUserId(), normalizeRole(account.getRole()), account.getStatus());
+    }
+
+    static String normalizeRole(String role) {
+        return "RIDER".equalsIgnoreCase(role) ? "PASSENGER" : role.toUpperCase(Locale.ROOT);
     }
 
     public LoginResponse login(LoginRequest request) {
@@ -78,9 +103,9 @@ public class AccountService {
         if (!"ACTIVE".equalsIgnoreCase(account.getStatus())) {
             return new LoginResponse(
                     "Account is not active",
-                    account.getId(),
+                    account.getUserId(),
                     account.getUsername(),
-                    account.getRole(),
+                    normalizeRole(account.getRole()),
                     account.getStatus(),
                     null
             );
@@ -92,9 +117,9 @@ public class AccountService {
 
         return new LoginResponse(
                 "Login successful",
-                account.getId(),
+                account.getUserId(),
                 account.getUsername(),
-                account.getRole(),
+                normalizeRole(account.getRole()),
                 account.getStatus(),
                 token
         );

@@ -7,6 +7,8 @@ import com.ridelink.account_service.account.AccountRepository;
 import com.ridelink.account_service.account.AccountService;
 import com.ridelink.account_service.account.JwtService;
 import com.ridelink.account_service.account.SecurityConfig;
+import com.ridelink.account_service.account.RegistrationRequest;
+import com.ridelink.account_service.account.AccountResponse;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -304,7 +306,9 @@ class AccountServiceApplicationTests {
     }
 
     @Test
-    void invalidRoleShouldReturn400WithValidationError() throws Exception {
+    void callerCannotSelectAnElevatedRole() throws Exception {
+        when(accountService.register(any())).thenReturn(new AccountResponse(
+                java.util.UUID.randomUUID(), "rider1", "rider@example.com", "PASSENGER", "ACTIVE"));
 
         mockMvc.perform(post("/api/accounts/register")
                 .contentType("application/json")
@@ -313,17 +317,28 @@ class AccountServiceApplicationTests {
                           "username": "rider1",
                           "email": "rider@example.com",
                           "password": "password123",
-                          "role": "MANAGER",
+                          "role": "ADMIN",
                           "status": "ACTIVE"
                         }
                         """))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.errors.role")
-                .value("Role must be RIDER, DRIVER, or ADMIN"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.role").value("PASSENGER"));
     }
 
     @Test
-    void missingRoleShouldReturn400WithValidationError() throws Exception {
+    void driverProvisioningRequiresAdmin() throws Exception {
+        mockMvc.perform(post("/api/accounts/admin/drivers")
+                .contentType("application/json")
+                .content("""
+                        {"username":"driver1","email":"driver@example.com","password":"password123"}
+                        """))
+        .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void registrationDoesNotRequireRoleOrStatus() throws Exception {
+        when(accountService.register(any())).thenReturn(new AccountResponse(
+                java.util.UUID.randomUUID(), "rider1", "rider@example.com", "PASSENGER", "ACTIVE"));
 
         mockMvc.perform(post("/api/accounts/register")
                 .contentType("application/json")
@@ -335,14 +350,17 @@ class AccountServiceApplicationTests {
                           "status": "ACTIVE"
                         }
                         """))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.errors.role")
-                .value("Role must not be blank"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.role").value("PASSENGER"))
+        .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test
-    void missingStatusShouldReturn400WithValidationError()
+    void registrationIgnoresCallerSuppliedStatus()
             throws Exception {
+
+        when(accountService.register(any())).thenReturn(new AccountResponse(
+                java.util.UUID.randomUUID(), "rider1", "rider@example.com", "PASSENGER", "ACTIVE"));
 
         mockMvc.perform(post("/api/accounts/register")
                 .contentType("application/json")
@@ -354,9 +372,10 @@ class AccountServiceApplicationTests {
                           "role": "RIDER"
                         }
                         """))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.errors.status")
-                .value("Status must not be blank"));
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.password").doesNotExist())
+        .andExpect(jsonPath("$.status").value("ACTIVE"))
+        .andExpect(jsonPath("$.role").value("PASSENGER"));
     }
 
     @Test
@@ -375,16 +394,15 @@ class AccountServiceApplicationTests {
                         """))
         .andExpect(status().isOk());
 
-        ArgumentCaptor<Account> accountCaptor =
-                ArgumentCaptor.forClass(Account.class);
+        ArgumentCaptor<RegistrationRequest> accountCaptor =
+                ArgumentCaptor.forClass(RegistrationRequest.class);
 
         verify(accountService).register(accountCaptor.capture());
 
-        Account registeredAccount = accountCaptor.getValue();
-        assertEquals("rider1", registeredAccount.getUsername());
-        assertEquals("rider@example.com", registeredAccount.getEmail());
-        assertEquals("RIDER", registeredAccount.getRole());
-        assertEquals("ACTIVE", registeredAccount.getStatus());
+        RegistrationRequest registration = accountCaptor.getValue();
+        assertEquals("rider1", registration.username());
+        assertEquals("rider@example.com", registration.email());
+        assertEquals("password123", registration.password());
     }
 
     @Test
@@ -478,7 +496,7 @@ class AccountServiceApplicationTests {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.message").value("Login successful"))
         .andExpect(jsonPath("$.username").value("rider1"))
-        .andExpect(jsonPath("$.role").value("RIDER"))
+        .andExpect(jsonPath("$.role").value("PASSENGER"))
         .andExpect(jsonPath("$.token").isNotEmpty())
         .andExpect(content().string(not(containsString(
                 "password123"
@@ -506,7 +524,7 @@ class AccountServiceApplicationTests {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.username").value("rider1"))
         .andExpect(jsonPath("$.email").value("rider1@example.com"))
-        .andExpect(jsonPath("$.role").value("RIDER"))
+        .andExpect(jsonPath("$.role").value("PASSENGER"))
         .andExpect(jsonPath("$.status").value("ACTIVE"))
         .andExpect(jsonPath("$.password").doesNotExist())
         .andExpect(content().string(not(containsString(
@@ -602,6 +620,7 @@ class AccountServiceApplicationTests {
 
         assertEquals("rider1", claims.getSubject());
         assertEquals("DRIVER", claims.get("role", String.class));
+        assertEquals(account.getUserId().toString(), claims.get("userId", String.class));
         assertEquals("ACTIVE", claims.get("status", String.class));
         assertEquals("rider1", realJwtService.extractUsername(token));
         assertEquals("DRIVER", realJwtService.extractRole(token));
@@ -799,7 +818,7 @@ class AccountServiceApplicationTests {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.username").value("rider1"))
         .andExpect(jsonPath("$.email").value("new@example.com"))
-        .andExpect(jsonPath("$.role").value("RIDER"))
+        .andExpect(jsonPath("$.role").value("PASSENGER"))
         .andExpect(jsonPath("$.status").value("ACTIVE"))
         .andExpect(jsonPath("$.password").doesNotExist())
         .andExpect(content().string(not(containsString(
@@ -856,7 +875,7 @@ class AccountServiceApplicationTests {
                         """))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.username").value("rider1"))
-        .andExpect(jsonPath("$.role").value("RIDER"))
+        .andExpect(jsonPath("$.role").value("PASSENGER"))
         .andExpect(jsonPath("$.status").value("ACTIVE"));
 
         assertEquals("rider1", account.getUsername());
@@ -1044,7 +1063,7 @@ class AccountServiceApplicationTests {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.username").value("rider1"))
         .andExpect(jsonPath("$.email").value(originalEmail))
-        .andExpect(jsonPath("$.role").value("RIDER"))
+        .andExpect(jsonPath("$.role").value("PASSENGER"))
         .andExpect(jsonPath("$.status").value("INACTIVE"))
         .andExpect(jsonPath("$.password").doesNotExist())
         .andExpect(content().string(not(containsString(
@@ -1197,6 +1216,7 @@ class AccountServiceApplicationTests {
 
         Account account = new Account();
         account.setId(1L);
+        account.setUserId(java.util.UUID.randomUUID());
         account.setUsername("rider1");
         account.setEmail("rider1@example.com");
         account.setPassword(passwordEncoder.encode(password));

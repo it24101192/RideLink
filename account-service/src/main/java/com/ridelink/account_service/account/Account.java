@@ -9,6 +9,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import java.util.UUID;
+import jakarta.persistence.PrePersist;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
 public class Account {
@@ -16,6 +19,9 @@ public class Account {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "user_id", unique = true, length = 16)
+    private UUID userId;
 
     @NotBlank(message = "Username must not be blank")
     @Size(min = 3, message = "Username must be at least 3 characters long")
@@ -29,12 +35,13 @@ public class Account {
 
     @NotBlank(message = "Password must not be blank")
     @Size(min = 8, message = "Password must be at least 8 characters long")
+    @JsonIgnore
     private String password;
 
     @NotBlank(message = "Role must not be blank")
     @Pattern(
-            regexp = "RIDER|DRIVER|ADMIN",
-            message = "Role must be RIDER, DRIVER, or ADMIN"
+            regexp = "PASSENGER|RIDER|DRIVER|ADMIN",
+            message = "Role must be PASSENGER, DRIVER, or ADMIN"
     )
     private String role;
 
@@ -46,6 +53,15 @@ public class Account {
 
     public Long getId() {
         return id;
+    }
+
+    public UUID getUserId() { return userId; }
+
+    public void setUserId(UUID userId) { this.userId = userId; }
+
+    @PrePersist
+    void assignUserId() {
+        if (userId == null) userId = UUID.randomUUID();
     }
 
     public void setId(Long id) {

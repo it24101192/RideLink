@@ -47,7 +47,7 @@ class FareCalculatorTest {
     void acceptsZeroDistanceAndDurationAndUsesDefaultSurge() {
         var fare = calculator.calculate(new FareCalculator.Input(0, 0));
 
-        assertEquals(20_000, fare.distanceFare());
+        assertEquals(0, fare.distanceFare());
         assertEquals(0, fare.timeFare());
         assertEquals(0, fare.surgeAmount());
         assertEquals(30_000, fare.totalFare());

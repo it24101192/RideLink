@@ -4,6 +4,6 @@ import java.util.UUID;
 import com.fasterxml.jackson.annotation.JsonAlias;
 
 /** Minimal typed view of Ride Management's ride resource. */
-public record RideServiceRide(@JsonAlias("rideId") UUID id, String status) {
+public record RideServiceRide(@JsonAlias("rideId") UUID id, String status, String passengerId, String driverId) {
     public boolean isCompleted() { return "COMPLETED".equalsIgnoreCase(status); }
 }

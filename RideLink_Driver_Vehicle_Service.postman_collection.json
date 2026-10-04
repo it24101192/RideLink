@@ -1,0 +1,626 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+		"name": "RideLink - Member 2: Driver & Vehicle Service",
+		"description": "Comprehensive Postman collection for RideLink Member 2 (Driver & Vehicle Service). Covers Driver profile operations, vehicle assignments, availability state transitions (AVAILABLE, BUSY, OFFLINE), location simulation, and eligible driver queries for Member 3 (Ride Management).",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Driver Management",
+			"item": [
+				{
+					"name": "1. Create Driver 1 (Kamal Perera - Colombo)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"accountId\": \"00000000-0000-0000-0000-000000000101\",\n  \"name\": \"Kamal Perera\",\n  \"phone\": \"+94771234567\",\n  \"email\": \"kamal.perera@ridelink.com\",\n  \"licenseNo\": \"DL-1001-WP\",\n  \"availability\": \"AVAILABLE\",\n  \"serviceArea\": \"Colombo\",\n  \"latitude\": 6.9271,\n  \"longitude\": 79.8612\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Create Driver 2 (Nimal Fernando - Colombo)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"accountId\": \"00000000-0000-0000-0000-000000000102\",\n  \"name\": \"Nimal Fernando\",\n  \"phone\": \"+94772345678\",\n  \"email\": \"nimal.fernando@ridelink.com\",\n  \"licenseNo\": \"DL-1002-WP\",\n  \"availability\": \"AVAILABLE\",\n  \"serviceArea\": \"Colombo\",\n  \"latitude\": 6.9319,\n  \"longitude\": 79.8478\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Create Driver 3 (Ravi Shanmugam - Kandy)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"accountId\": \"00000000-0000-0000-0000-000000000103\",\n  \"name\": \"Ravi Shanmugam\",\n  \"phone\": \"+94773456789\",\n  \"email\": \"ravi.shanmugam@ridelink.com\",\n  \"licenseNo\": \"DL-1003-CP\",\n  \"availability\": \"AVAILABLE\",\n  \"serviceArea\": \"Kandy\",\n  \"latitude\": 7.2906,\n  \"longitude\": 80.6337\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Get All Drivers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Get Driver By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Update Driver Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"accountId\": \"00000000-0000-0000-0000-000000000101\",\n  \"name\": \"Kamal Perera (Senior Driver)\",\n  \"phone\": \"+94771234567\",\n  \"email\": \"kamal.perera@ridelink.com\",\n  \"licenseNo\": \"DL-1001-WP\",\n  \"availability\": \"AVAILABLE\",\n  \"serviceArea\": \"Colombo\",\n  \"latitude\": 6.9271,\n  \"longitude\": 79.8612\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Delete Driver By ID",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"3"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Vehicle Management",
+			"item": [
+				{
+					"name": "1. Create Vehicle 1 (Car for Kamal)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"driverId\": 1,\n  \"vehicleType\": \"CAR\",\n  \"model\": \"Toyota Prius Hybrid\",\n  \"plateNumber\": \"CAB-1234\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/vehicles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehicles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Create Vehicle 2 (Car for Nimal)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"driverId\": 2,\n  \"vehicleType\": \"CAR\",\n  \"model\": \"Honda Grace 2018\",\n  \"plateNumber\": \"WP-CAR-5678\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/vehicles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehicles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Create Vehicle 3 (Van for Ravi)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"driverId\": 3,\n  \"vehicleType\": \"VAN\",\n  \"model\": \"Toyota HiAce KDH\",\n  \"plateNumber\": \"CP-VAN-9012\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/vehicles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehicles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "4. Get All Vehicles",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/vehicles",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehicles"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "5. Get Vehicle By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/vehicles/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehicles",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "6. Update Vehicle",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"driverId\": 1,\n  \"vehicleType\": \"PREMIUM_CAR\",\n  \"model\": \"Toyota Prius Alpha 2021\",\n  \"plateNumber\": \"CAB-1234\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/vehicles/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehicles",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "7. Assign Vehicle to Driver",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/vehicles/1/assign/2",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehicles",
+								"1",
+								"assign",
+								"2"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "8. Get Vehicles by Driver ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/vehicles/driver/1",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehicles",
+								"driver",
+								"1"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "9. Delete Vehicle",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/vehicles/3",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"vehicles",
+								"3"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Availability & Status",
+			"item": [
+				{
+					"name": "1. Set Driver Status to AVAILABLE",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"availability\": \"AVAILABLE\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/1/availability",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"1",
+								"availability"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Set Driver Status to BUSY",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"availability\": \"BUSY\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/2/availability",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"2",
+								"availability"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Set Driver Status to OFFLINE",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"availability\": \"OFFLINE\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/1/availability",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"1",
+								"availability"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Simulated Location",
+			"item": [
+				{
+					"name": "1. Update Driver Location (Galle Face, Colombo)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"latitude\": 6.9271,\n  \"longitude\": 79.8612\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/1/location",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"1",
+								"location"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Update Driver Location (Fort Railway Station)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"latitude\": 6.9344,\n  \"longitude\": 79.8506\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/2/location",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"2",
+								"location"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Search & Ride Management Integration",
+			"item": [
+				{
+					"name": "1. Get All Available Drivers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/available",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"available"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "2. Get Eligible Drivers for Colombo (Member 3 API)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/eligible?serviceArea=Colombo",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"eligible"
+							],
+							"query": [
+								{
+									"key": "serviceArea",
+									"value": "Colombo"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "3. Get Eligible Drivers for Kandy (Member 3 API)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/drivers/eligible?serviceArea=Kandy",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"drivers",
+								"eligible"
+							],
+							"query": [
+								{
+									"key": "serviceArea",
+									"value": "Kandy"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3002"
+		}
+	]
+}

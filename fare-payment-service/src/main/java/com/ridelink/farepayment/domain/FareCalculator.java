@@ -4,15 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.Objects;
 
-/**
- * Pure fare calculation domain service. All money fields in the result are
- * integer LKR cents (100 cents = LKR 1); no framework or persistence types
- * are used here.
- *
- * Rule: LKR 200 base + LKR 80 per km + LKR 10 per minute, then apply the
- * optional 1.0–2.5 surge multiplier to the subtotal. Round calculated cents
- * half-up, then enforce the LKR 300 minimum on the surged total.
- */
+
 public final class FareCalculator {
     private static final long BASE_FARE_CENTS = 20_000L;
     private static final long PER_KM_CENTS = 8_000L;
@@ -71,7 +63,7 @@ public final class FareCalculator {
         }
     }
 
-    /** Monetary values are integer LKR cents; breakdown documents the rule. */
+
     public record Fare(long baseFare, long distanceFare, long timeFare,
                        long surgeAmount, long subtotal, boolean minimumApplied,
                        long totalFare, String currency, String breakdown) { }

@@ -1,22 +1,24 @@
 package com.ridelink.account_service.account;
 
+import java.util.UUID;
+
 public class AdminAccountResponse {
 
-    private Long id;
+    private UUID id;
     private String username;
     private String email;
     private String role;
     private String status;
 
     public AdminAccountResponse(Account account) {
-        this.id = account.getId();
+        this.id = account.getUserId();
         this.username = account.getUsername();
         this.email = account.getEmail();
-        this.role = account.getRole();
+        this.role = AccountService.normalizeRole(account.getRole());
         this.status = account.getStatus();
     }
 
-    public Long getId() {
+    public UUID getId() {
         return id;
     }
 

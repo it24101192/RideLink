@@ -5,5 +5,5 @@ import java.util.UUID;
 
 /** Port for the Ride Management REST contract. */
 public interface RideServiceClient {
-    Optional<RideServiceRide> getRide(UUID rideId);
+    Optional<RideServiceRide> getRide(UUID rideId, String bearerToken);
 }

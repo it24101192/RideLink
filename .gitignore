@@ -1,5 +1,8 @@
 .gradle/
 build/
+bin/
+out/
+node_modules/
 
 .idea/
 *.iml
@@ -11,6 +14,7 @@ build/
 
 .env
 .env.*
+!.env.example
 
 .DS_Store
 Thumbs.db

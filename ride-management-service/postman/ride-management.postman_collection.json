@@ -1,0 +1,63 @@
+{
+  "info": {
+    "name": "Ride Management Service",
+    "description": "Ride lifecycle and negative-case requests for local RideLink development.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3003" },
+    { "key": "passengerToken", "value": "" },
+    { "key": "driverToken", "value": "" },
+    { "key": "adminToken", "value": "" },
+    { "key": "rideId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Rides",
+      "item": [
+        {
+          "name": "Create ride",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{passengerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"pickupLat\": 6.9271,\n  \"pickupLng\": 79.8612,\n  \"pickupAddress\": \"Colombo Fort\",\n  \"destLat\": 6.9147,\n  \"destLng\": 79.9729,\n  \"destAddress\": \"Rajagiriya\",\n  \"durationMin\": 25\n}" }, "url": "{{baseUrl}}/api/rides" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('created', () => pm.response.to.have.status(201));", "const body = pm.response.json();", "if (body.id) pm.collectionVariables.set('rideId', body.id);"] } }]
+        },
+        {
+          "name": "List my rides",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{passengerToken}}" }], "url": "{{baseUrl}}/api/rides" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('success', () => pm.response.to.have.status(200));", "pm.test('array body', () => pm.expect(pm.response.json()).to.be.an('array'));"] } }]
+        },
+        {
+          "name": "Get ride",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{passengerToken}}" }], "url": "{{baseUrl}}/api/rides/{{rideId}}" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('found', () => pm.response.to.have.status(200));"] } }]
+        },
+        {
+          "name": "Fare estimate before booking",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{passengerToken}}" }], "url": "{{baseUrl}}/api/rides/fare-estimate?pickupLat=6.9271&pickupLng=79.8612&destLat=6.9147&destLng=79.9729&durationMin=25" },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('estimate returned in LKR', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().currency).to.eql('LKR'); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "Lifecycle",
+      "item": [
+        { "name": "Assign nearest driver (admin)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }], "url": "{{baseUrl}}/api/rides/{{rideId}}/assign" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('assigned or no driver', () => pm.expect([200,409]).to.include(pm.response.code));"] } }] },
+        { "name": "Accept ride (driver)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }], "url": "{{baseUrl}}/api/rides/{{rideId}}/accept" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('accepted', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Start ride (driver)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }], "url": "{{baseUrl}}/api/rides/{{rideId}}/start" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('started', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Complete ride (driver)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }], "url": "{{baseUrl}}/api/rides/{{rideId}}/complete" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('completed', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Cancel ride (passenger)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{passengerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"Changed plans\"}" }, "url": "{{baseUrl}}/api/rides/{{rideId}}/cancel" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('cancelled', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "Receipt", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{passengerToken}}" }], "url": "{{baseUrl}}/api/rides/{{rideId}}/receipt" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('receipt response', () => pm.expect([200,404,409]).to.include(pm.response.code));"] } }] }
+      ]
+    },
+    { "name": "Payments", "item": [{ "name": "Receipt", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{passengerToken}}" }], "url": "{{baseUrl}}/api/rides/{{rideId}}/receipt" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('receipt returned', () => pm.response.to.have.status(200));", "pm.test('receipt includes transaction reference', () => pm.expect(pm.response.json()).to.have.property('transactionRef'));"] } }] }] },
+    {
+      "name": "Negative Cases",
+      "item": [
+        { "name": "Missing pickup coordinates", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{passengerToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"pickupAddress\":\"Colombo\",\"destLat\":7,\"destLng\":80,\"destAddress\":\"Kandy\"}" }, "url": "{{baseUrl}}/api/rides" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('validation error shape', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().error).to.have.property('code'); });"] } }] },
+        { "name": "Passenger cannot accept", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{passengerToken}}" }], "url": "{{baseUrl}}/api/rides/{{rideId}}/accept" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('role forbidden', () => pm.response.to.have.status(403));"] } }] },
+        { "name": "Invalid transition: complete before ride starts", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{driverToken}}" }], "url": "{{baseUrl}}/api/rides/{{rideId}}/complete" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('invalid transition returns 400', () => pm.response.to.have.status(400));", "pm.test('consistent error envelope', () => pm.expect(pm.response.json().error).to.have.all.keys('code', 'message', 'details'));"] } }] },
+        { "name": "Admin force cancel", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\"reason\":\"Administrative cancellation\"}" }, "url": "{{baseUrl}}/api/rides/{{rideId}}/cancel" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin force cancel succeeds', () => pm.response.to.have.status(200));"] } }] },
+        { "name": "No token", "request": { "method": "GET", "url": "{{baseUrl}}/api/rides" }, "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('unauthorized', () => pm.response.to.have.status(401));"] } }] }
+      ]
+    }
+  ]
+}

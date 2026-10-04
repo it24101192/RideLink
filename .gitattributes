@@ -1,0 +1,3 @@
+# Gradle launchers execute inside Linux containers, including Windows checkouts.
+**/gradlew text eol=lf
+**/gradlew.bat text eol=crlf

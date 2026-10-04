@@ -7,8 +7,11 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,10 +38,11 @@ public class PaymentController {
 
     @PostMapping
     @Operation(summary = "Process a simulated payment for a ride")
-    public ResponseEntity<PaymentDto> process(@Valid @RequestBody PaymentRequest request, Authentication authentication) {
+    public ResponseEntity<PaymentDto> process(@Valid @RequestBody PaymentRequest request, Authentication authentication,
+                                               @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String bearer) {
         AuthenticatedUser user = AuthenticatedUser.from(authentication);
         ensureRequestIdentity(user, request);
-        PaymentDto payment = paymentService.processPayment(request);
+        PaymentDto payment = paymentService.processPayment(request, bearer(authentication, bearer));
         HttpStatus status = payment.status() == PaymentStatus.FAILED
             ? HttpStatus.PAYMENT_REQUIRED : HttpStatus.CREATED;
         return ResponseEntity.status(status).body(payment);
@@ -46,9 +50,10 @@ public class PaymentController {
 
     @GetMapping("/ride/{rideId}")
     @Operation(summary = "List payment records for a ride")
-    public List<PaymentDto> getByRideId(@PathVariable UUID rideId, Authentication authentication) {
+    public List<PaymentDto> getByRideId(@PathVariable UUID rideId, Authentication authentication,
+                                       @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String bearer) {
         AuthenticatedUser user = AuthenticatedUser.from(authentication);
-        List<PaymentDto> results = paymentService.getPaymentByRideId(rideId);
+        List<PaymentDto> results = paymentService.getPaymentByRideId(rideId, bearer(authentication, bearer));
         results.forEach(payment -> ensureOwnerOrAdmin(user, payment.passengerId(), payment.driverId()));
         return results;
     }
@@ -85,6 +90,12 @@ public class PaymentController {
         if (user.isPassenger() && user.userId().equals(request.passengerId())) return;
         if (user.isDriver() && user.userId().equals(request.driverId())) return;
         throw new UnauthorizedError("Payment identity must match the authenticated passenger or driver");
+    }
+
+    private static String bearer(Authentication authentication, String header) {
+        if (header != null && header.startsWith("Bearer ")) return header;
+        if (authentication instanceof JwtAuthenticationToken jwt) return "Bearer " + jwt.getToken().getTokenValue();
+        throw new UnauthorizedError("Bearer credentials are required for Ride Management lookup");
     }
 
     private static void ensureOwnerOrAdmin(AuthenticatedUser user, String passengerId, String driverId) {

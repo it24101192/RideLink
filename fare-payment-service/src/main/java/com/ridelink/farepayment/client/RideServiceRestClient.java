@@ -17,7 +17,7 @@ import org.springframework.web.client.RestClientException;
 import java.net.http.HttpClient;
 import com.ridelink.farepayment.error.RideServiceUnavailableError;
 
-/** Synchronous adapter for GET {RIDE_SERVICE_URL}/api/v1/rides/{rideId}. */
+    /** Synchronous adapter for GET {RIDE_SERVICE_URL}/api/rides/{rideId}. */
 @Component
 @ConditionalOnProperty(name = "ride.service.client.enabled", havingValue = "true", matchIfMissing = true)
 public class RideServiceRestClient implements RideServiceClient {
@@ -48,12 +48,13 @@ public class RideServiceRestClient implements RideServiceClient {
     }
 
     @Override
-    public Optional<RideServiceRide> getRide(UUID rideId) {
+    public Optional<RideServiceRide> getRide(UUID rideId, String bearerToken) {
         RestClientException lastFailure = null;
         for (int attempt = 0; attempt <= retryCount; attempt++) {
             try {
                 RideServiceRide ride = client.get()
-                    .uri("/api/v1/rides/{rideId}", rideId)
+                    .uri("/api/rides/{rideId}", rideId)
+                    .header("Authorization", bearerToken)
                     .retrieve()
                     .body(RideServiceRide.class);
                 if (ride == null) throw new RestClientException("Ride Service returned an empty response");
@@ -63,6 +64,10 @@ public class RideServiceRestClient implements RideServiceClient {
                 return Optional.of(ride);
             } catch (HttpClientErrorException.NotFound notFound) {
                 return Optional.empty();
+            } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden ex) {
+                throw new com.ridelink.farepayment.error.UnauthorizedError("Ride Management rejected the payment request credentials");
+            } catch (HttpClientErrorException ex) {
+                throw new com.ridelink.farepayment.error.ValidationError("Ride Management rejected the ride lookup request");
             } catch (ResourceAccessException | HttpServerErrorException ex) {
                 lastFailure = ex;
                 if (attempt < retryCount) pauseBeforeRetry(attempt);

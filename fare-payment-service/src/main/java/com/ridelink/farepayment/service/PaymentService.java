@@ -19,6 +19,7 @@ import com.ridelink.farepayment.model.Payment;
 import com.ridelink.farepayment.model.PaymentStatus;
 import com.ridelink.farepayment.messaging.MessagingClient;
 import com.ridelink.farepayment.messaging.PaymentCompletedEvent;
+import com.ridelink.farepayment.messaging.RideCompletedEvent;
 import com.ridelink.farepayment.repository.port.PaymentRepository;
 
 @Service
@@ -42,7 +43,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentDto processPayment(PaymentRequest request) {
+    public PaymentDto processPayment(PaymentRequest request, String bearerToken) {
         if (request == null) throw new ValidationError("payment request is required");
         UUID rideId = parseRideId(request.rideId());
         if (request.passengerId() == null || request.passengerId().isBlank()
@@ -58,14 +59,17 @@ public class PaymentService {
         FinalFareDto finalFare = fareService.calculateFinalFare(rideId,
             request.actualDistanceKm(), request.actualDurationMinutes(), request.surgeMultiplier());
 
-        var ride = rideClient.getRide(rideId)
+        var ride = rideClient.getRide(rideId, bearerToken)
             .orElseThrow(() -> new NotFoundError("Ride not found: " + rideId));
         if (!ride.isCompleted()) {
             throw new RideNotCompletedError("Ride must be in COMPLETED state before payment");
         }
-        boolean alreadyPaid = payments.findByRideId(rideId).stream().anyMatch(existing ->
-            existing.getStatus() == PaymentStatus.SUCCESS || existing.getStatus() == PaymentStatus.PENDING);
-        if (alreadyPaid) throw new DuplicatePaymentError("A successful or pending payment already exists for this ride");
+        if (!request.passengerId().equals(ride.passengerId()) || !request.driverId().equals(ride.driverId())) {
+            throw new UnauthorizedError("Payment passenger and driver IDs must match the ride");
+        }
+        if (!payments.findByRideId(rideId).isEmpty()) {
+            throw new DuplicatePaymentError("A payment record already exists for this ride");
+        }
 
         int amount = FareService.toStoredAmount(finalFare.fare().totalFare());
         if (amount <= 0) throw new ValidationError("amount must be positive");
@@ -92,13 +96,58 @@ public class PaymentService {
         return result;
     }
 
+    /** Processes a trusted, committed ride.completed event exactly once per ride. */
+    @Transactional
+    public PaymentDto processRideCompleted(RideCompletedEvent event) {
+        if (event == null || !"ride.completed".equals(event.eventType()) || !"1.0".equals(event.eventVersion())
+                || !isUuid(event.eventId()) || event.occurredAt() == null) {
+            throw new ValidationError("Unsupported or malformed ride.completed event");
+        }
+        UUID rideId = parseRideId(event.rideId());
+        if (event.passengerId() == null || event.driverId() == null || event.fareAmount() == null
+                || event.fareAmount().signum() <= 0 || !"LKR".equalsIgnoreCase(event.currency())) {
+            throw new ValidationError("ride.completed event is missing payment details");
+        }
+        if (event.distanceKm() == null || !Double.isFinite(event.distanceKm().doubleValue())
+                || event.distanceKm().signum() <= 0 || event.durationMinutes() < 0) {
+            throw new ValidationError("ride.completed event contains invalid trip metrics");
+        }
+        var existing = payments.findByRideId(rideId);
+        if (!existing.isEmpty()) return toDto(existing.getFirst());
+
+        long cents;
+        try {
+            cents = event.fareAmount().movePointRight(2).setScale(0, java.math.RoundingMode.HALF_UP).longValueExact();
+        } catch (ArithmeticException ex) {
+            throw new ValidationError("ride.completed fare is outside the supported amount range");
+        }
+        int amount = FareService.toStoredAmount(cents);
+        boolean successful = outcomeSimulator.succeeds();
+        Payment payment = new Payment();
+        payment.setRideId(rideId);
+        payment.setPassengerId(event.passengerId());
+        payment.setDriverId(event.driverId());
+        payment.setAmount(amount);
+        payment.setCurrency("LKR");
+        payment.setPaymentMethod(com.ridelink.farepayment.model.PaymentMethod.CASH);
+        payment.setTransactionRef("RIDE-" + event.eventId());
+        payment.setStatus(successful ? PaymentStatus.SUCCESS : PaymentStatus.FAILED);
+        payment.setFailureReason(successful ? null : FAILURE_REASON);
+        Payment saved = payments.create(payment);
+        PaymentDto result = toDto(saved);
+        messaging.publish("payment.completed", new PaymentCompletedEvent(saved.getId(), saved.getRideId(),
+            saved.getPassengerId(), saved.getDriverId(), saved.getAmount(), saved.getCurrency(),
+            saved.getStatus(), java.time.Instant.now()));
+        return result;
+    }
+
     public PaymentDto getPaymentById(UUID id) {
         return findPayment(id);
     }
 
-    public List<PaymentDto> getPaymentByRideId(UUID rideId) {
+    public List<PaymentDto> getPaymentByRideId(UUID rideId, String bearerToken) {
         if (rideId == null) throw new ValidationError("rideId is required");
-        if (rideClient.getRide(rideId).isEmpty()) throw new NotFoundError("Ride not found: " + rideId);
+        if (rideClient.getRide(rideId, bearerToken).isEmpty()) throw new NotFoundError("Ride not found: " + rideId);
         return payments.findByRideId(rideId).stream().map(PaymentService::toDto).toList();
     }
 
@@ -135,6 +184,11 @@ public class PaymentService {
     private static UUID parseRideId(String rideId) {
         try { return UUID.fromString(rideId); }
         catch (RuntimeException ex) { throw new ValidationError("rideId must be a valid UUID"); }
+    }
+
+    private static boolean isUuid(String value) {
+        try { UUID.fromString(value); return true; }
+        catch (RuntimeException exception) { return false; }
     }
 
     private static PaymentDto toDto(Payment payment) {

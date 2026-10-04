@@ -16,12 +16,14 @@ java {
 repositories { mavenCentral() }
 
 dependencies {
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-amqp'
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.flywaydb:flyway-core'
+    implementation 'org.springframework.boot:spring-boot-starter-flyway'
     implementation 'org.flywaydb:flyway-mysql'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1'
 
@@ -40,26 +42,8 @@ checkstyle {
     configFile = rootProject.file('config/checkstyle/checkstyle.xml')
 }
 
-tasks.named('test', Test) {
-    exclude '**/FarePaymentApiIntegrationTest.class'
-}
-
-tasks.register('integrationTest', Test) {
-    description = 'Runs MVC/API integration tests.'
-    group = 'verification'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    include '**/FarePaymentApiIntegrationTest.class'
-    useJUnitPlatform()
-    shouldRunAfter tasks.named('test')
-}
-
-tasks.named('check') {
-    dependsOn tasks.named('integrationTest')
-}
-
 tasks.named('jacocoTestReport') {
-    dependsOn tasks.named('test'), tasks.named('integrationTest')
+    dependsOn tasks.named('test')
     executionData(fileTree(layout.buildDirectory.get().asFile).include('jacoco/*.exec'))
     reports {
         xml.required = true

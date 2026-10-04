@@ -82,7 +82,6 @@ public class FileMessagingClient implements MessagingClient {
         }
     }
 
-    @Override
     public void subscribe(String topic, Consumer<String> jsonPayloadConsumer) {
         subscribers.computeIfAbsent(topic, ignored -> new CopyOnWriteArrayList<>()).add(jsonPayloadConsumer);
     }
