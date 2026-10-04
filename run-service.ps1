@@ -55,6 +55,25 @@ $settings['RABBITMQ_PORT'] = '5672'
 $ports = @{'account-service' = '8081'; 'driver-vehicle-service' = '3002'; 'ride-management-service' = '3003'; 'fare-payment-service' = '3004'}
 $settings['SERVER_PORT'] = $ports[$Service]
 
+# Avoid starting a second instance on the same port.
+$servicePort = [int]$ports[$Service]
+$existingHealth = $null
+try {
+    $existingHealth = Invoke-RestMethod -Uri "http://localhost:$servicePort/health" -TimeoutSec 2
+} catch { }
+if ($existingHealth.status -eq 'UP') {
+    Write-Host "$Service is already healthy at http://localhost:$servicePort. Keep its existing terminal open; no second instance was started."
+    return
+}
+$portProbe = [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Any, $servicePort)
+try {
+    $portProbe.Start()
+} catch {
+    throw "Port $servicePort is unavailable. Stop the existing service with Ctrl+C in its terminal (or stop its Docker container), then retry .\run-service.ps1 $Service."
+} finally {
+    $portProbe.Stop()
+}
+
 $previous = @{}
 Push-Location (Join-Path $PSScriptRoot $Service)
 try {

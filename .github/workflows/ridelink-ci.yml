@@ -14,12 +14,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  account-service:
-    name: Account Service · Java 21
+  java-services:
+    name: ${{ matrix.service }} - Java 21
     runs-on: ubuntu-latest
-    env:
-      RIDELINK_DB_PASSWORD: ${{ secrets.RIDELINK_DB_PASSWORD }}
-      RIDELINK_JWT_SECRET: ${{ secrets.RIDELINK_JWT_SECRET }}
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - account-service
+          - driver-vehicle-service
+          - ride-management-service
+          - fare-payment-service
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -27,37 +32,43 @@ jobs:
           distribution: temurin
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
-      - name: Test and build Account Service
-        run: bash account-service/gradlew -p account-service clean test build
-
-  fare-payment-service:
-    name: Fare & Payment Service · Java 21
-    runs-on: ubuntu-latest
-    env:
-      FARE_DB_URL: ${{ secrets.FARE_DB_URL }}
-      FARE_DB_USERNAME: ${{ secrets.FARE_DB_USERNAME }}
-      FARE_DB_PASSWORD: ${{ secrets.FARE_DB_PASSWORD }}
-      FARE_JWT_SECRET: ${{ secrets.FARE_JWT_SECRET }}
-      RIDE_SERVICE_URL: ${{ secrets.RIDE_SERVICE_URL }}
-      MESSAGE_BROKER_URL: file:/tmp/ridelink-ci-events.jsonl
-      MESSAGE_BROKER_TYPE: file
-      PAYMENT_TEST_MODE: "true"
-      PAYMENT_TEST_OUTCOME_SUCCESS: "true"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Lint, test, cover, and build Fare & Payment Service
-        run: bash account-service/gradlew -p fare-payment-service clean checkstyleMain checkstyleTest test integrationTest jacocoTestReport build
-
-      - name: Upload combined Fare & Payment coverage
+      - name: Test and build service
+        run: bash "${{ matrix.service }}/gradlew" -p "${{ matrix.service }}" clean build
+      - name: Build Fare & Payment coverage report
+        if: matrix.service == 'fare-payment-service'
+        run: bash fare-payment-service/gradlew -p fare-payment-service jacocoTestReport
+      - name: Upload test and coverage reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: ridelink-fare-payment-coverage
-          path: fare-payment-service/build/reports/jacoco/test/
+          name: ${{ matrix.service }}-reports
+          path: |
+            ${{ matrix.service }}/build/reports/tests/
+            ${{ matrix.service }}/build/reports/jacoco/
           if-no-files-found: warn
           retention-days: 14
+
+  javascript-utilities:
+    name: Ride JavaScript tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ride-management-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: ride-management-service/package-lock.json
+      - run: npm ci
+      - run: npm run test:js
+
+  smoke-script:
+    name: PowerShell smoke script checks
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run offline smoke script tests
+        shell: powershell
+        run: .\tests\e2e-smoke-test.tests.ps1

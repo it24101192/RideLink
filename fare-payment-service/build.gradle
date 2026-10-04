@@ -35,7 +35,22 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-tasks.named('test') { useJUnitPlatform() }
+tasks.named('test') {
+    useJUnitPlatform()
+    exclude '**/FarePaymentApiWebTest.class'
+}
+
+tasks.register('integrationTest', Test) {
+    description = 'Runs HTTP API and security integration tests with mocked downstream services.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    useJUnitPlatform()
+    include '**/FarePaymentApiWebTest.class'
+    shouldRunAfter tasks.named('test')
+}
+
+tasks.named('check') { dependsOn tasks.named('integrationTest') }
 
 checkstyle {
     toolVersion = '10.21.4'
@@ -43,7 +58,7 @@ checkstyle {
 }
 
 tasks.named('jacocoTestReport') {
-    dependsOn tasks.named('test')
+    dependsOn tasks.named('test'), tasks.named('integrationTest')
     executionData(fileTree(layout.buildDirectory.get().asFile).include('jacoco/*.exec'))
     reports {
         xml.required = true
